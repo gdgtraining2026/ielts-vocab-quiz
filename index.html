@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IELTS Interactive Vocabulary Quiz (v2) - Batch 1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { primary: '#2563eb', secondary: '#10b981', alert: '#ef4444' }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: system-ui, "Microsoft JhengHei", "PingFang TC", sans-serif; }
+        .font-serif-en { font-family: 'Georgia', 'Merriweather', serif; }
+        .font-mono-kk { font-family: 'Courier New', monospace; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background-color: #475569; }
+        .speaker-btn { cursor: pointer; transition: transform 0.1s; }
+        .speaker-btn:hover { transform: scale(1.2); }
+        .speaker-btn:active { transform: scale(0.9); }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 transition-colors duration-300">
+
+    <div id="app" class="flex flex-col md:flex-row h-screen overflow-hidden">
+        
+        <!-- 左側側邊欄 -->
+        <aside class="w-full md:w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0 transition-all z-20">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-blue-50 dark:bg-gray-800">
+                <h1 class="text-xl font-bold text-primary dark:text-blue-400">IELTS Vocab Pro</h1>
+                <button onclick="toggleMobileMenu()" class="md:hidden text-gray-500 text-2xl">☰</button>
+            </div>
+            <div id="sidebar-menu" class="hidden md:flex flex-col overflow-y-auto flex-1 p-4 space-y-4">
+                
+                <!-- 控制面板 -->
+                <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg border border-gray-200 dark:border-gray-600 space-y-3">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="font-medium text-gray-600 dark:text-gray-300">Accent:</span>
+                        <select id="setting-accent" onchange="updateSettings()" class="bg-white border border-gray-300 text-gray-900 rounded p-1 dark:bg-gray-600 dark:border-gray-500 dark:text-white outline-none">
+                            <option value="en-US">🇺🇸 US</option>
+                            <option value="en-GB">🇬🇧 GB</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="font-medium text-gray-600 dark:text-gray-300">Speed:</span>
+                        <select id="setting-speed" onchange="updateSettings()" class="bg-white border border-gray-300 text-gray-900 rounded p-1 dark:bg-gray-600 dark:border-gray-500 dark:text-white outline-none">
+                            <option value="0.7">🐢 0.7x</option>
+                            <option value="0.9" selected>🚶 0.9x</option>
+                            <option value="1.0">🏃 1.0x</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="font-medium text-gray-600 dark:text-gray-300">Theme:</span>
+                        <button onclick="toggleDarkMode()" class="text-lg px-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded">🌓</button>
+                    </div>
+                </div>
+
+                <hr class="border-gray-200 dark:border-gray-700">
+
+                <!-- 導覽按鈕 -->
+                <div>
+                    <button onclick="switchMode('ALL')" id="btn-mode-all" class="w-full text-left font-bold p-3 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 transition-colors">
+                        📚 All Questions
+                    </button>
+                </div>
+                <div>
+                    <button onclick="switchMode('MISTAKES')" id="btn-mode-mistakes" class="w-full text-left font-bold p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors">
+                        ❌ My Mistakes (<span id="mistake-count">0</span>)
+                    </button>
+                </div>
+
+                <hr class="border-gray-200 dark:border-gray-700 mt-auto">
+
+                <!-- 進度條 -->
+                <div class="pt-2">
+                    <div class="flex justify-between text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                        <span>Progress: <span id="progress-text">0/25</span></span>
+                        <span>Accuracy: <span id="accuracy-text">0%</span></span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                        <div id="progress-bar-fill" class="bg-primary h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 右側主內容區 -->
+        <main class="flex-1 flex flex-col h-screen overflow-hidden relative bg-gray-50 dark:bg-gray-900">
+            
+            <!-- 考題與解析捲動區 -->
+            <div id="quiz-scroll-area" class="flex-1 overflow-y-auto p-4 md:p-8 pb-32">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    
+                    <!-- 題目卡片 (純英文) -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 md:p-8">
+                        <div class="flex justify-between items-start mb-6">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-bold text-lg text-gray-800 dark:text-gray-100" id="header-title">Question 1</span>
+                                <span id="badge-type" class="text-xs font-bold bg-blue-100 text-blue-800 px-2 py-1 rounded dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800">MC</span>
+                                <span id="badge-category" class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded dark:bg-gray-700 dark:text-gray-400 border border-gray-200 dark:border-gray-600">Category</span>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-4 items-start">
+                            <h2 id="q-en" class="text-2xl md:text-3xl font-serif-en text-gray-900 dark:text-white leading-relaxed">
+                                <!-- Question text injected here -->
+                            </h2>
+                            <span onclick="speakCurrentQuestion()" class="speaker-btn text-3xl mt-1" title="Listen to question">🔊</span>
+                        </div>
+
+                        <!-- 選項區 -->
+                        <div id="options-container" class="mt-8 space-y-3">
+                            <!-- Options injected here -->
+                        </div>
+                        
+                        <!-- 提交按鈕 -->
+                        <div class="mt-8 flex justify-end">
+                            <button id="btn-submit" onclick="submitAnswer()" class="w-full md:w-auto bg-primary hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 text-lg">
+                                Submit Answer
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 解析區 (全選項詳解) -->
+                    <div id="explanation-card" class="hidden bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        
+                        <!-- 結果 Banner -->
+                        <div id="result-banner" class="p-6 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
+                            <div id="result-text" class="text-2xl font-bold"></div>
+                            <button id="btn-star" onclick="toggleMistakeStar()" class="text-2xl hover:scale-110 transition-transform p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700" title="Toggle Mistake Book">⭐</button>
+                        </div>
+
+                        <!-- 全選項詳解列表 -->
+                        <div class="p-6 space-y-6">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                                <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Analysis</span> 
+                                全選項詳解
+                            </h3>
+                            <div id="options-analysis-container" class="space-y-4">
+                                <!-- JS 動態生成所有選項的解析 -->
+                            </div>
+
+                            <!-- 額外學習區 -->
+                            <div id="extra-learning-section" class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-4 hidden">
+                                <!-- JS 動態生成 IELTS Tip 等 -->
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 底部導覽列 -->
+            <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex justify-center gap-4 absolute bottom-0 w-full z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <button onclick="prevQuestion()" class="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors font-medium">Prev</button>
+                <button onclick="nextQuestion()" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors shadow font-medium">Next Question</button>
+            </footer>
+
+        </main>
+    </div>
+
+    <script>
+        // ================= 核心資料庫 (Batch 1: 1-25) =================
+        const questionsData = [
+    {
+        id: 1,
+        type: "MC",
+        category: "Addition, equation & conclusion",
+        source_page: 1,
+        difficulty: "medium",
+        question_en: "Tourism brings much-needed foreign currency to developing countries. ______, it provides employment for the local population.",
+        options: [
+            {
+                label: "A", text: "Furthermore",
+                kk: "[ˋfɝðɚˏmor]", ipa: "/ˌfɜːðəˈmɔː/", part_of_speech: "adv.", meaning_zh: "此外；而且",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。furthermore 用於補充說明，與前句的「帶來外匯」形成正面的遞進關係（提供就業）。",
+                phrase_example: { en: "The house is beautiful, and furthermore, it's in a great location.", zh: "這間房子很美，此外，它的地段也很好。" },
+                collocations: ["and furthermore"]
+            },
+            {
+                label: "B", text: "Similarly",
+                kk: "[ˋsɪməlɚlɪ]", ipa: "/ˈsɪmələli/", part_of_speech: "adv.", meaning_zh: "同樣地；相似地",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。similarly 用於比較兩個相似的情況，而此題是增加新的好處，而非比較。",
+                phrase_example: { en: "Cars must stop at red lights. Similarly, bicycles must also stop.", zh: "汽車遇到紅燈必須停下。同樣地，自行車也必須停下。" },
+                collocations: ["similarly situated"]
+            },
+            {
+                label: "C", text: "Therefore",
+                kk: "[ˋðɛrˏfor]", ipa: "/ˈðeəfɔː/", part_of_speech: "adv.", meaning_zh: "因此；所以",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。therefore 用於表達因果關係（因為A所以B）。提供就業並不是帶來外匯的「結果」。",
+                phrase_example: { en: "He was injured and therefore unable to play.", zh: "他受傷了，因此無法上場比賽。" },
+                collocations: ["and therefore"]
+            },
+            {
+                label: "D", text: "Nevertheless",
+                kk: "[ˏnɛvɚðəˋlɛs]", ipa: "/ˌnevəðəˈles/", part_of_speech: "adv.", meaning_zh: "然而；儘管如此",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。nevertheless 用於轉折（讓步），但題目的兩句話都是正面的優點，無轉折關係。",
+                phrase_example: { en: "What you said was true. It was, nevertheless, a little unkind.", zh: "你說的是事實。但儘管如此，還是有點不友善。" },
+                collocations: ["but nevertheless"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：在 Writing Task 2 擴展論點時，使用 'furthermore' 或 'moreover' 來疊加你的支持理由，能展現出色的邏輯連貫性 (Coherence and Cohesion)。"
+    },
+    {
+        id: 2,
+        type: "MC",
+        category: "Around the world",
+        source_page: 2,
+        difficulty: "easy",
+        question_en: "Due to rapid economic growth, countries such as Japan, South Korea, and Taiwan in ______ have become major players in global trade.",
+        options: [
+            {
+                label: "A", text: "the Middle East",
+                kk: "[ðə ˋmɪd! ist]", ipa: "/ðə ˌmɪdl ˈiːst/", part_of_speech: "n.", meaning_zh: "中東",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。中東通常指阿拉伯半島、伊朗等區域，不包含日韓台。",
+                phrase_example: { en: "Oil exports are vital to the economy of the Middle East.", zh: "石油出口對中東經濟至關重要。" },
+                collocations: ["Middle East peace process"]
+            },
+            {
+                label: "B", text: "Australasia",
+                kk: "[ˏɔstrəˋleʒə]", ipa: "/ˌɒstrəˈleɪʒə/", part_of_speech: "n.", meaning_zh: "大洋洲（尤指紐澳）",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。Australasia 主要涵蓋澳洲、紐西蘭及鄰近太平洋島嶼。",
+                phrase_example: { en: "She is studying the indigenous cultures of Australasia.", zh: "她正在研究大洋洲的原住民文化。" },
+                collocations: ["Australasia region"]
+            },
+            {
+                label: "C", text: "the Far East",
+                kk: "[ðə fɑr ist]", ipa: "/ðə fɑːr iːst/", part_of_speech: "n.", meaning_zh: "遠東（東亞地區）",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。在英語地理名詞中，the Far East（遠東）泛指東亞及東南亞國家。",
+                phrase_example: { en: "The company has expanded its operations into the Far East.", zh: "該公司已將業務擴展至遠東地區。" },
+                collocations: ["markets in the Far East"]
+            },
+            {
+                label: "D", text: "Scandinavia",
+                kk: "[ˏskændɪˋnevɪə]", ipa: "/ˌskændɪˈneɪviə/", part_of_speech: "n.", meaning_zh: "斯堪地那維亞半島（北歐）",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。斯堪地那維亞指的是挪威、瑞典、丹麥等北歐國家。",
+                phrase_example: { en: "Scandinavia is known for its high standard of living.", zh: "斯堪地那維亞以其高生活水準而聞名。" },
+                collocations: ["travel to Scandinavia"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：Listening 測驗中常考地理名詞，注意各個區域 (regions) 所涵蓋的代表性國家。"
+    },
+    {
+        id: 3,
+        type: "MC",
+        category: "Changes 1",
+        source_page: 3,
+        difficulty: "medium",
+        question_en: "According to the graph, the number of tourists tends to ______ wildly depending on the season and weather conditions.",
+        options: [
+            {
+                label: "A", text: "remain constant",
+                kk: "[rɪˋmen ˋkɑnstənt]", ipa: "/rɪˈmeɪn ˈkɒnstənt/", part_of_speech: "phr.v.", meaning_zh: "保持穩定不變",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。remain constant 表示數據持平，與題目中「wildly (劇烈地) 受到季節影響」的語境矛盾。",
+                phrase_example: { en: "The temperature in the room remained constant.", zh: "房間裡的溫度保持恆定。" },
+                collocations: ["remain relatively constant"]
+            },
+            {
+                label: "B", text: "peak",
+                kk: "[pik]", ipa: "/piːk/", part_of_speech: "v.", meaning_zh: "達到頂峰",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。peak 指達到最高點，不能搭配 wildly (劇烈地) 來形容上下的變動。",
+                phrase_example: { en: "Traffic peaks between 8 and 9 in the morning.", zh: "交通流量在早上 8 點到 9 點之間達到高峰。" },
+                collocations: ["peak at (a number)"]
+            },
+            {
+                label: "C", text: "decline",
+                kk: "[dɪˋklaɪn]", ipa: "/dɪˈklaɪn/", part_of_speech: "v.", meaning_zh: "下降；衰退",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。decline 是單向的下降，無法形容受季節影響而產生的「上下波動」。",
+                phrase_example: { en: "Profits declined by 10% this year.", zh: "今年的利潤下降了 10%。" },
+                collocations: ["decline sharply", "steady decline"]
+            },
+            {
+                label: "D", text: "fluctuate",
+                kk: "[ˋflʌktʃʊˏet]", ipa: "/ˈflʌktʃueɪt/", part_of_speech: "v.", meaning_zh: "波動；起伏不定",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。fluctuate 專門用來描述數據、價格或數量的上下劇烈變動。",
+                phrase_example: { en: "Vegetable prices fluctuate according to the season.", zh: "蔬菜價格隨季節波動。" },
+                collocations: ["fluctuate wildly", "fluctuate between"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：Writing Task 1 描寫折線圖 (Line Graph) 必備神字！當線條像波浪一樣時，寫 'fluctuate wildly' 絕對能拿高分。"
+    },
+    {
+        id: 4,
+        type: "FILL_MC",
+        category: "Changes 2",
+        source_page: 5,
+        difficulty: "medium",
+        question_en: "The environmental conditions in the lake have begun to ______ rapidly due to the discharge of toxic industrial waste.",
+        options: [
+            {
+                label: "A", text: "renovate",
+                kk: "[ˋrɛnəˏvet]", ipa: "/ˈrenəveɪt/", part_of_speech: "v.", meaning_zh: "重新粉刷；翻新",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。renovate 通常用於「翻修」老舊的建築物或房間，不能用來形容環境或健康狀態。",
+                phrase_example: { en: "They plan to renovate the old farmhouse.", zh: "他們計畫翻修那座老農舍。" },
+                collocations: ["renovate a house"]
+            },
+            {
+                label: "B", text: "adapt",
+                kk: "[əˋdæpt]", ipa: "/əˈdæpt/", part_of_speech: "v.", meaning_zh: "適應；改編",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。adapt 指為了新情況而調整自己，工業廢水造成的是破壞，而非讓湖泊主動去適應。",
+                phrase_example: { en: "It took him a while to adapt to the new climate.", zh: "他花了一段時間才適應新的氣候。" },
+                collocations: ["adapt to changes"]
+            },
+            {
+                label: "C", text: "fade",
+                kk: "[fed]", ipa: "/feɪd/", part_of_speech: "v.", meaning_zh: "褪色；逐漸消失",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。fade 通常用來指光線變暗、顏色變淡或記憶逐漸消失，不用於形容整體環境的毀壞。",
+                phrase_example: { en: "Hopes of a peace settlement are fading.", zh: "達成和平協議的希望正在逐漸破滅。" },
+                collocations: ["fade away", "fade slowly"]
+            },
+            {
+                label: "D", text: "deteriorate",
+                kk: "[dɪˋtɪrɪəˏret]", ipa: "/dɪˈtɪəriəreɪt/", part_of_speech: "v.", meaning_zh: "惡化；變壞",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。deteriorate 是雅思高階字彙，專門形容情況、環境、天氣或健康狀況「變得更糟」。",
+                phrase_example: { en: "Her health deteriorated rapidly, and she died shortly afterwards.", zh: "她的健康狀況迅速惡化，不久便過世了。" },
+                collocations: ["deteriorate rapidly", "conditions deteriorate"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：在探討環境污染 (Pollution) 或健康問題的論述中，用 deteriorate 替代 get worse 可顯著提升詞彙分數 (Lexical Resource)。"
+    },
+    {
+        id: 5,
+        type: "MC",
+        category: "Condition",
+        source_page: 7,
+        difficulty: "hard",
+        question_en: "You are welcome to borrow any of the reference books from the library, ______ you return them by the end of the week.",
+        options: [
+            {
+                label: "A", text: "unless",
+                kk: "[ʌnˋlɛs]", ipa: "/ʌnˈles/", part_of_speech: "conj.", meaning_zh: "除非",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。unless 表達負面條件（如果不），帶入句子會變成「除非你週末前歸還，否則歡迎借書」，邏輯完全錯誤。",
+                phrase_example: { en: "You can't get a job unless you have experience.", zh: "除非你有經驗，否則找不到工作。" },
+                collocations: ["unless otherwise stated"]
+            },
+            {
+                label: "B", text: "however many",
+                kk: "[haʊˋɛvɚ ˋmɛnɪ]", ipa: "/haʊˈevə ˈmeni/", part_of_speech: "phr.", meaning_zh: "無論多少",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。however many 後面通常接複數名詞（如 however many times），且不符合此處的「條件」語境。",
+                phrase_example: { en: "However many times I try, I still can't do it.", zh: "無論我嘗試多少次，我還是做不到。" },
+                collocations: []
+            },
+            {
+                label: "C", text: "providing that",
+                kk: "[prəˋvaɪdɪŋ ðæt]", ipa: "/prəˈvaɪdɪŋ ðæt/", part_of_speech: "conj.", meaning_zh: "只要；條件是",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。providing that 是 as long as 的進階寫法，用來引導條件子句，意思是「在...的條件下」。",
+                phrase_example: { en: "You can go out providing that you finish your homework first.", zh: "只要你先寫完作業就可以出去。" },
+                collocations: ["providing (that)"]
+            },
+            {
+                label: "D", text: "wherever",
+                kk: "[hwɛrˋɛvɚ]", ipa: "/weərˈevə/", part_of_speech: "conj.", meaning_zh: "無論哪裡",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。wherever 是地點副詞連接詞，無法表達「只要」這種條件關係。",
+                phrase_example: { en: "We can go wherever you like.", zh: "你想去哪裡我們就去哪裡。" },
+                collocations: ["wherever possible"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：Writing Task 2 若要表達條件，強烈建議用 providing that 取代 if 或 as long as，語氣更正式學術。"
+    },
+    {
+        id: 6,
+        type: "FILL_MC",
+        category: "Confusing words 1",
+        source_page: 8,
+        difficulty: "hard",
+        question_en: "Widening the main road made an ______ difference to the traffic flow during the morning rush hour.",
+        options: [
+            {
+                label: "A", text: "appreciative",
+                kk: "[əˋpriʃɪətɪv]", ipa: "/əˈpriːʃətɪv/", part_of_speech: "adj.", meaning_zh: "感激的；有鑑賞力的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。appreciative 用來形容人「感到感激」或「懂得欣賞」，不能用來形容「差異 (difference)」。",
+                phrase_example: { en: "The audience was highly appreciative of the performance.", zh: "觀眾對這場表演非常讚賞。" },
+                collocations: ["be appreciative of"]
+            },
+            {
+                label: "B", text: "approachable",
+                kk: "[əˋprotʃəb!]", ipa: "/əˈprəʊtʃəbl/", part_of_speech: "adj.", meaning_zh: "平易近人的；易懂的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。approachable 用來形容人「容易親近的」，或事物「容易理解的」。",
+                phrase_example: { en: "Despite being a star, she's very approachable.", zh: "儘管是個明星，她卻非常平易近人。" },
+                collocations: ["highly approachable"]
+            },
+            {
+                label: "C", text: "appropriate",
+                kk: "[əˋproprɪɪt]", ipa: "/əˈprəʊpriət/", part_of_speech: "adj.", meaning_zh: "適當的；合適的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。雖然 appropriate 是好字，但在英文搭配中，我們不會說 appropriate difference (適當的差異)。",
+                phrase_example: { en: "Jeans are not appropriate for a formal interview.", zh: "牛仔褲不適合正式的面試。" },
+                collocations: ["appropriate behavior", "appropriate action"]
+            },
+            {
+                label: "D", text: "appreciable",
+                kk: "[əˋpriʃɪəb!]", ipa: "/əˈpriːʃəbl/", part_of_speech: "adj.", meaning_zh: "明顯的；可察覺到的",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。appreciable 專指數量或變化「大到足以被察覺或重視」，appreciable difference 是一個經典的學術搭配詞。",
+                phrase_example: { en: "There has been no appreciable change in the patient's condition.", zh: "病人的情況沒有明顯的改變。" },
+                collocations: ["appreciable difference", "appreciable effect"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：字首相同但字尾不同的易混淆字 (False friends) 是閱讀測驗最愛挖洞的考點，務必釐清 appreciable (明顯的) 與 appreciative (感激的) 的差異。"
+    },
+    {
+        id: 7,
+        type: "FILL_MC",
+        category: "Confusing words 1",
+        source_page: 9,
+        difficulty: "hard",
+        question_en: "The brain requires a ______ supply of blood to function properly; even a short interruption can cause damage.",
+        options: [
+            {
+                label: "A", text: "continual",
+                kk: "[kənˋtɪnjʊəl]", ipa: "/kənˈtɪnjuəl/", part_of_speech: "adj.", meaning_zh: "頻頻發生的；一再重複的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。continual 強調「頻繁發生，但中間有中斷或停頓」，血液供應不能中斷，因此不能用這個字。",
+                phrase_example: { en: "I'm tired of these continual interruptions.", zh: "我厭倦了這些不斷發生的打擾（有中斷）。" },
+                collocations: ["continual interruptions", "continual complaints"]
+            },
+            {
+                label: "B", text: "continued",
+                kk: "[kənˋtɪnjʊd]", ipa: "/kənˈtɪnjuːd/", part_of_speech: "adj.", meaning_zh: "持續存在的；不變的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。continued 通常指某個狀態或情況繼續維持（例如 continued support），不強調物理上的「不間斷」。",
+                phrase_example: { en: "We appreciate your continued support.", zh: "我們感謝您持續的支持。" },
+                collocations: ["continued success", "continued support"]
+            },
+            {
+                label: "C", text: "continuing",
+                kk: "[kənˋtɪnjʊɪŋ]", ipa: "/kənˈtɪnjuːɪŋ/", part_of_speech: "adj.", meaning_zh: "正在持續中的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。continuing 多作為分詞當形容詞，指事件正在進行，不如 continuous 來得精準描述物理流動。",
+                phrase_example: { en: "There is continuing debate over this issue.", zh: "關於這個問題的爭論仍在持續。" },
+                collocations: ["continuing education"]
+            },
+            {
+                label: "D", text: "continuous",
+                kk: "[kənˋtɪnjʊəs]", ipa: "/kənˈtɪnjuəs/", part_of_speech: "adj.", meaning_zh: "連續不斷的（無中斷）",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。continuous 強調「時間或空間上完全沒有中斷 (without interruption)」，大腦的血液供應必須是這種狀態。",
+                phrase_example: { en: "A continuous white line on the road means no overtaking.", zh: "馬路上連續的白線代表禁止超車。" },
+                collocations: ["continuous process", "continuous supply"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：牢記：continual = 頻繁發生 (會停頓)；continuous = 毫不間斷 (一直進行)。"
+    },
+    {
+        id: 8,
+        type: "MC",
+        category: "Confusing words 2",
+        source_page: 11,
+        difficulty: "medium",
+        question_en: "As inflation spiralled completely out of control, the country's paper money suddenly became almost ______.",
+        options: [
+            {
+                label: "A", text: "priceless",
+                kk: "[ˋpraɪslɪs]", ipa: "/ˈpraɪsləs/", part_of_speech: "adj.", meaning_zh: "無價的；極其珍貴的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。priceless 是極度正面的字，指「太珍貴而無法用金錢衡量」，通貨膨脹會讓錢失去價值，而不是變珍貴。",
+                phrase_example: { en: "The museum holds a collection of priceless artworks.", zh: "這間博物館收藏了無價的藝術品。" },
+                collocations: ["priceless collection", "priceless information"]
+            },
+            {
+                label: "B", text: "worthy",
+                kk: "[ˋwɝðɪ]", ipa: "/ˈwɜːði/", part_of_speech: "adj.", meaning_zh: "值得的；有價值的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。worthy 是正面的字，指值得尊敬或有價值，不符合句子中經濟崩潰的語境。",
+                phrase_example: { en: "It was a worthy cause, so we donated money.", zh: "這是一項有價值的事業，所以我們捐了錢。" },
+                collocations: ["worthy cause", "worthy opponent"]
+            },
+            {
+                label: "C", text: "invaluable",
+                kk: "[ɪnˋvæljʊəb!]", ipa: "/ɪnˈvæljuəbl/", part_of_speech: "adj.", meaning_zh: "極有用的；寶貴的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。字首 in- 這裡不是否定，而是「價值高到無法估量」，與 priceless 類似，是正面字。",
+                phrase_example: { en: "Her help was invaluable during the project.", zh: "在專案期間她的幫助極其寶貴。" },
+                collocations: ["invaluable experience", "invaluable help"]
+            },
+            {
+                label: "D", text: "worthless",
+                kk: "[ˋwɝθlɪs]", ipa: "/ˈwɜːθləs/", part_of_speech: "adj.", meaning_zh: "毫無價值的；一文不值的",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。worth (價值) + less (沒有) = 沒有價值。通貨膨脹會導致貨幣失去購買力，變成廢紙。",
+                phrase_example: { en: "The company's shares are now virtually worthless.", zh: "該公司的股票現在幾乎一文不值。" },
+                collocations: ["virtually worthless", "completely worthless"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：閱讀測驗常利用 priceless (無價的) 與 worthless (一文不值的) 的反差來設計陷阱題，切記 priceless 是正面的！"
+    },
+    {
+        id: 9,
+        type: "FILL_MC",
+        category: "Confusing words 2",
+        source_page: 11,
+        difficulty: "hard",
+        question_en: "The ______ reason for his early resignation from the company was the overwhelming and stressful workload.",
+        options: [
+            {
+                label: "A", text: "principle",
+                kk: "[ˋprɪnsəp!]", ipa: "/ˈprɪnsəpl/", part_of_speech: "n.", meaning_zh: "原則；原理",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。principle 只能作名詞，指道德原則或科學原理。題目空格需要一個形容詞來修飾 reason。",
+                phrase_example: { en: "He is a man of strong moral principles.", zh: "他是一個有強烈道德原則的人。" },
+                collocations: ["in principle", "basic principle"]
+            },
+            {
+                label: "B", text: "personnel",
+                kk: "[ˏpɝsnˋɛl]", ipa: "/ˌpɜːsəˈnel/", part_of_speech: "n.", meaning_zh: "全體員工；人事部門",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。personnel 是名詞，指員工或人事部，語意完全不符。",
+                phrase_example: { en: "All personnel must wear security badges.", zh: "所有員工都必須配戴安全識別證。" },
+                collocations: ["personnel department", "military personnel"]
+            },
+            {
+                label: "C", text: "personal",
+                kk: "[ˋpɝsn!]", ipa: "/ˈpɜːsənl/", part_of_speech: "adj.", meaning_zh: "個人的；私人的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。雖然 personal reason (私人原因) 語法上可行，但後文已經點出原因是「工作量太大」，這是客觀事實，不算是純「私人」原因，且 D 選項更完美符合「主要原因」的語境。",
+                phrase_example: { en: "Please keep all your personal belongings with you.", zh: "請隨身攜帶您的所有個人物品。" },
+                collocations: ["personal experience", "personal information"]
+            },
+            {
+                label: "D", text: "principal",
+                kk: "[ˋprɪnsəp!]", ipa: "/ˈprɪnsəpl/", part_of_speech: "adj. / n.", meaning_zh: "主要的；首要的（也作名詞：校長）",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。principal 作為形容詞意指「最重要的、主要的」。principal reason 是一個極佳的學術搭配詞。",
+                phrase_example: { en: "Tourism is the country's principal source of income.", zh: "旅遊業是該國的主要收入來源。" },
+                collocations: ["principal reason", "principal source"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：拼字常錯區！記得 principal 結尾是 pal (主要/校長)，principle 結尾是 ple (原則)。寫作 Task 2 時用 principal reason 代替 main reason 會更具學術感。"
+    },
+    {
+        id: 10,
+        type: "MC",
+        category: "Context & meaning 1",
+        source_page: 12,
+        difficulty: "hard",
+        question_en: "Stephen King has always been an extremely ______ author, publishing at least one or two thick novels every single year.",
+        options: [
+            {
+                label: "A", text: "elusive",
+                kk: "[ɪˋlusɪv]", ipa: "/ɪˈluːsɪv/", part_of_speech: "adj.", meaning_zh: "難以捉摸的；難以找到的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。elusive 形容人或事物很難找到或難以理解。與「每年出版新書」的語意無關。",
+                phrase_example: { en: "The elusive leopard is rarely seen in the wild.", zh: "難以捉摸的豹很少在野外被看到。" },
+                collocations: ["elusive concept", "prove elusive"]
+            },
+            {
+                label: "B", text: "exhaustive",
+                kk: "[ɪgˋzɔstɪv]", ipa: "/ɪɡˈzɔːstɪv/", part_of_speech: "adj.", meaning_zh: "詳盡的；徹底的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。exhaustive 通常用來形容研究、報告或清單非常「全面詳盡」，不用來形容作者本人的特質。",
+                phrase_example: { en: "The police carried out an exhaustive search of the area.", zh: "警方對該地區進行了徹底的搜查。" },
+                collocations: ["exhaustive research", "exhaustive list"]
+            },
+            {
+                label: "C", text: "resilient",
+                kk: "[rɪˋzɪlɪənt]", ipa: "/rɪˈzɪliənt/", part_of_speech: "adj.", meaning_zh: "有彈性的；適應力強的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。resilient 指遇到挫折能迅速恢復的能力。雖然是好字，但無法呼應後半句「每年寫一兩本書」的線索。",
+                phrase_example: { en: "Children are often much more resilient than adults.", zh: "孩童通常比成年人適應力更強（更有韌性）。" },
+                collocations: ["highly resilient"]
+            },
+            {
+                label: "D", text: "prolific",
+                kk: "[prəˋlɪfɪk]", ipa: "/prəˈlɪfɪk/", part_of_speech: "adj.", meaning_zh: "多產的；作品豐富的",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。prolific 專門用來形容作家、藝術家或科學家創作出大量作品。後半句「每年出版一兩本厚小說」正是多產的證明。",
+                phrase_example: { en: "Picasso was an incredibly prolific artist.", zh: "畢卡索是一位不可思議地多產的藝術家。" },
+                collocations: ["prolific writer", "prolific author"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：從上下文 (context) 推敲生字意思是 Reading 必備技能。prolific 是介紹藝術家或歷史人物文章中的極高頻單字。"
+    },
+    {
+        id: 11,
+        type: "MATCH",
+        category: "Context & meaning 1",
+        source_page: 13,
+        difficulty: "hard",
+        question_en: "Select the word that correctly matches this definition: 'extremely important or urgent'.",
+        options: [
+            {
+                label: "A", text: "prohibitive",
+                kk: "[prəˋhɪbətɪv]", ipa: "/prəˈhɪbətɪv/", part_of_speech: "adj.", meaning_zh: "（價格）高得令人望而卻步的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。prohibitive 形容價格過高，阻礙人購買（源自動詞 prohibit 禁止）。",
+                phrase_example: { en: "The cost of housing in the city is prohibitive.", zh: "這城市的房價高得令人望而卻步。" },
+                collocations: ["prohibitive cost", "prohibitive price"]
+            },
+            {
+                label: "B", text: "mediocre",
+                kk: "[ˋmidɪˏokɚ]", ipa: "/ˌmiːdiˈəʊkə/", part_of_speech: "adj.", meaning_zh: "平庸的；普通的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。mediocre 帶有貶義，指品質普通、不夠好，與「重要/緊急」無關。",
+                phrase_example: { en: "The movie's plot was interesting, but the acting was mediocre.", zh: "電影情節很有趣，但演技很平庸。" },
+                collocations: ["mediocre performance"]
+            },
+            {
+                label: "C", text: "imperative",
+                kk: "[ɪmˋpɛrətɪv]", ipa: "/ɪmˈperətɪv/", part_of_speech: "adj.", meaning_zh: "極重要的；緊急的；必須的",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。imperative 完全符合定義，表示某事迫在眉睫、非做不可。",
+                phrase_example: { en: "It is imperative that we act immediately to solve the crisis.", zh: "我們必須立即採取行動解決危機。" },
+                collocations: ["absolutely imperative", "it is imperative that"]
+            },
+            {
+                label: "D", text: "arduous",
+                kk: "[ˋɑrdʒʊəs]", ipa: "/ˈɑːdʒuəs/", part_of_speech: "adj.", meaning_zh: "艱難的；費力的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。arduous 形容任務需要耗費大量體力或精力，但未必是「緊急」的。",
+                phrase_example: { en: "The refugees made an arduous journey across the mountains.", zh: "難民們翻山越嶺，經歷了一段艱辛的旅程。" },
+                collocations: ["arduous task", "arduous journey"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：Writing Task 2 提出解決方案時，使用 'It is imperative that...' 代替 'We must...'，能瞬間將文法句型提升至 7.0 以上的水準。"
+    },
+    {
+        id: 12,
+        type: "MC",
+        category: "Context & meaning 2",
+        source_page: 14,
+        difficulty: "medium",
+        question_en: "The primary goal of the local government is to help new immigrants ______ into the community smoothly.",
+        options: [
+            {
+                label: "A", text: "address",
+                kk: "[əˋdrɛs]", ipa: "/əˈdres/", part_of_speech: "v.", meaning_zh: "處理；應付",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。address 當動詞常指「處理問題 (address an issue)」，但不能搭配 into the community。",
+                phrase_example: { en: "We need to address the problem of air pollution immediately.", zh: "我們必須立即處理空氣污染問題。" },
+                collocations: ["address a problem", "address an issue"]
+            },
+            {
+                label: "B", text: "integrate",
+                kk: "[ˋɪntəˏgret]", ipa: "/ˈɪntɪɡreɪt/", part_of_speech: "v.", meaning_zh: "融入；整合",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。integrate into 是一個固定搭配，專門用來指個體「融入」社會、群體或系統中。",
+                phrase_example: { en: "It can be very difficult for immigrants to integrate into local society.", zh: "移民要融入當地社會可能會非常困難。" },
+                collocations: ["integrate into society", "integrate with"]
+            },
+            {
+                label: "C", text: "hinder",
+                kk: "[ˋhɪndɚ]", ipa: "/ˈhɪndə/", part_of_speech: "v.", meaning_zh: "阻礙；妨礙",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。hinder 是負面詞，意思是阻礙。政府的目標是「幫助」移民，所以不會是「阻礙」他們。",
+                phrase_example: { en: "A poor diet can hinder a child's growth.", zh: "不良的飲食會阻礙孩童的生長。" },
+                collocations: ["hinder progress"]
+            },
+            {
+                label: "D", text: "jeopardise",
+                kk: "[ˋdʒɛpɚˏdaɪz]", ipa: "/ˈdʒepədaɪz/", part_of_speech: "v.", meaning_zh: "危及；損害",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。jeopardise 是負面詞，意指將事物置於危險之中。邏輯上完全相反。",
+                phrase_example: { en: "His foolish behavior could jeopardise his career.", zh: "他愚蠢的行為可能會危及他的事業。" },
+                collocations: ["jeopardise a career", "jeopardise chances"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：探討全球化、移民或文化衝擊 (Culture shock) 時，integrate 是核心字彙。"
+    },
+    {
+        id: 13,
+        type: "MC",
+        category: "Context & meaning 3",
+        source_page: 16,
+        difficulty: "medium",
+        question_en: "Advances in modern medicine and a healthier diet have significantly increased the average human ______.",
+        options: [
+            {
+                label: "A", text: "infancy",
+                kk: "[ˋɪnfənsɪ]", ipa: "/ˈɪnfənsi/", part_of_speech: "n.", meaning_zh: "嬰兒期；初期",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。醫學進步不會增加「嬰兒期的長度」，這不符合邏輯。",
+                phrase_example: { en: "The technology is still in its infancy.", zh: "這項科技仍處於初期發展階段。" },
+                collocations: ["in its infancy"]
+            },
+            {
+                label: "B", text: "longevity",
+                kk: "[lɑnˋdʒɛvətɪ]", ipa: "/lɒnˈdʒevəti/", part_of_speech: "n.", meaning_zh: "長壽",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。雖然 longevity 有長壽之意，但英文不說 increase the longevity，因為 longevity 本身就代表「長」，通常說 promote longevity。",
+                phrase_example: { en: "The Japanese are known for their longevity.", zh: "日本人以長壽聞名。" },
+                collocations: ["promote longevity"]
+            },
+            {
+                label: "C", text: "evaluation",
+                kk: "[ɪˏvæljʊˋeʃən]", ipa: "/ɪˌvæljuˈeɪʃn/", part_of_speech: "n.", meaning_zh: "評估；估價",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。evaluation 意思是評估，與醫學進步帶來的生命影響毫無關聯。",
+                phrase_example: { en: "The company conducts performance evaluations every year.", zh: "公司每年進行績效評估。" },
+                collocations: ["performance evaluation"]
+            },
+            {
+                label: "D", text: "lifespan",
+                kk: "[ˋlaɪfˏspæn]", ipa: "/ˈlaɪfspæn/", part_of_speech: "n.", meaning_zh: "壽命；預期使用期限",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。lifespan 指生物的壽命跨度，average human lifespan (人類平均壽命) 是一個標準的學術名詞組合。",
+                phrase_example: { en: "A TV set has an average lifespan of 11 years.", zh: "電視機的平均使用壽命為 11 年。" },
+                collocations: ["average lifespan", "human lifespan"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：lifespan 不僅能用在人或動物身上，在 Task 1 流程圖或 Task 2 探討科技時，也可以用來指產品的「使用壽命 (product lifespan)」。"
+    },
+    {
+        id: 14,
+        type: "FILL_MC",
+        category: "Contrast and comparison",
+        source_page: 18,
+        difficulty: "hard",
+        question_en: "It is essential for young children to learn how to ______ between right and wrong.",
+        options: [
+            {
+                label: "A", text: "differ",
+                kk: "[ˋdɪfɚ]", ipa: "/ˈdɪfə/", part_of_speech: "v.", meaning_zh: "不同；相異",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。differ 是不及物動詞，指兩者「本身不同」(A differs from B)，不能指人去「區分」事物。",
+                phrase_example: { en: "Opinions differ widely on this issue.", zh: "在這個問題上意見分歧很大。" },
+                collocations: ["differ widely", "differ from"]
+            },
+            {
+                label: "B", text: "contrast",
+                kk: "[ˋkɑntræst]", ipa: "/kənˈtrɑːst/", part_of_speech: "v.", meaning_zh: "對比",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。contrast 指把兩件事物放在一起「比較出差異」，通常搭配 contrast A with B。此處語境是「辨別」，而非學術上的對比分析。",
+                phrase_example: { en: "Contrast her current behavior with how she acted last year.", zh: "將她現在的行為與她去年的表現做個對比。" },
+                collocations: ["contrast sharply", "in contrast to"]
+            },
+            {
+                label: "C", text: "distinguish",
+                kk: "[dɪˋstɪŋgwɪʃ]", ipa: "/dɪˈstɪŋɡwɪʃ/", part_of_speech: "v.", meaning_zh: "區分；辨別",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。雖然 distinguish 意思與 differentiate 幾乎相同，都能搭配 between，但通常 distinguish A from B 更常見。這裡 D 選項也是極佳答案，在本書中主要考 differentiate。",
+                phrase_example: { en: "He's color-blind and can't distinguish between red and green.", zh: "他是色盲，無法分辨紅色和綠色。" },
+                collocations: ["distinguish A from B", "distinguish between"]
+            },
+            {
+                label: "D", text: "differentiate",
+                kk: "[ˏdɪfəˋrɛnʃɪˏet]", ipa: "/ˌdɪfəˈrenʃieɪt/", part_of_speech: "v.", meaning_zh: "區分；辨別",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。differentiate between A and B 是一個強烈的學術搭配，指找出兩者的不同之處並加以區分。",
+                phrase_example: { en: "A child may not differentiate between his imagination and the real world.", zh: "孩子可能無法區分他的想像與真實世界。" },
+                collocations: ["differentiate between", "differentiate A from B"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：寫作時若要表達「區分好壞/真假」，使用 differentiate between... 會比 tell the difference between... 更加正式。"
+    },
+    {
+        id: 15,
+        type: "MC",
+        category: "Contrast and comparison",
+        source_page: 18,
+        difficulty: "easy",
+        question_en: "Despite coming from very different cultural backgrounds, the two students realised they had a lot ______.",
+        options: [
+            {
+                label: "A", text: "in similar",
+                kk: "[-]", ipa: "/-/", part_of_speech: "phr.", meaning_zh: "（錯誤用法）",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。英文中沒有 in similar 這樣的片語搭配。similar 通常作形容詞，如 be similar to。",
+                phrase_example: { en: "My teaching style is similar to hers.", zh: "我的教學風格與她相似。" },
+                collocations: ["similar to"]
+            },
+            {
+                label: "B", text: "in particular",
+                kk: "[ɪn pɚˋtɪkjəlɚ]", ipa: "/ɪn pəˈtɪkjələ/", part_of_speech: "phr.", meaning_zh: "特別地；尤其",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。in particular 意指「特別是...」，無法接在 have a lot 之後表達「有共通點」。",
+                phrase_example: { en: "I love Italian food, in particular pasta.", zh: "我喜歡義大利菜，特別是義大利麵。" },
+                collocations: ["nothing in particular"]
+            },
+            {
+                label: "C", text: "exactly",
+                kk: "[ɪgˋzæktlɪ]", ipa: "/ɪɡˈzæktli/", part_of_speech: "adv.", meaning_zh: "確切地；完全地",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。文法不通，不能說 have a lot exactly。",
+                phrase_example: { en: "That is exactly what I mean.", zh: "那正是我所指的意思。" },
+                collocations: ["exactly the same"]
+            },
+            {
+                label: "D", text: "in common",
+                kk: "[ɪn ˋkɑmən]", ipa: "/ɪn ˈkɒmən/", part_of_speech: "phr.", meaning_zh: "共通點；共有的",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。have something / a lot in common 是固定片語，表示兩個人或事物有共同的特徵或興趣。",
+                phrase_example: { en: "I found I had nothing in common with him.", zh: "我發現我和他毫無共通點。" },
+                collocations: ["have a lot in common", "have nothing in common"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：Speaking Part 1 幾乎必考朋友或家庭關係題。'We have a lot in common.' 是一句非常自然且得分的母語者句型。"
+    },
+    {
+        id: 16,
+        type: "MC",
+        category: "Emphasis & misunderstanding",
+        source_page: 19,
+        difficulty: "medium",
+        question_en: "It is ______ that we secure funding by the end of the month, or the entire project will be cancelled.",
+        options: [
+            {
+                label: "A", text: "obscure",
+                kk: "[əbˋskjʊr]", ipa: "/əbˈskjʊə/", part_of_speech: "adj.", meaning_zh: "模糊的；鮮為人知的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。obscure 指難以理解或默默無聞，這與句子的急迫性（否則專案會被取消）邏輯相反。",
+                phrase_example: { en: "The rules of the game are quite obscure.", zh: "這遊戲的規則相當難以理解。" },
+                collocations: ["obscure writer", "obscure reason"]
+            },
+            {
+                label: "B", text: "assumed",
+                kk: "[əˋsumd]", ipa: "/əˈsjuːmd/", part_of_speech: "adj.", meaning_zh: "假定的；被認為的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。assumed 表示假設的，套入句型 It is assumed that... (人們假定...) 無法帶出後文警告的嚴重性。",
+                phrase_example: { en: "He lived under an assumed name to hide his identity.", zh: "他用假名生活以隱藏身分。" },
+                collocations: ["assumed name"]
+            },
+            {
+                label: "C", text: "mistaken",
+                kk: "[mɪˋstekən]", ipa: "/mɪˈsteɪkən/", part_of_speech: "adj.", meaning_zh: "錯誤的",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。mistaken 意指認知錯誤。說「拿到資金是錯誤的」不符合語意。",
+                phrase_example: { en: "If you think I'll help you cheat, you are deeply mistaken.", zh: "如果你以為我會幫你作弊，那你就大錯特錯了。" },
+                collocations: ["mistaken belief", "mistaken identity"]
+            },
+            {
+                label: "D", text: "crucially important",
+                kk: "[ˋkruʃəlɪ ɪmˋpɔrtnt]", ipa: "/ˈkruːʃəli ɪmˈpɔːtnt/", part_of_speech: "phr.", meaning_zh: "至關重要的",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。crucially 是副詞修飾 important，表達強烈的必要性。與後句「否則計畫將被取消」完美呼應。",
+                phrase_example: { en: "It is crucially important that we act immediately.", zh: "我們立即採取行動是至關重要的。" },
+                collocations: ["crucially important"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：在 Writing Task 2 中，強烈建議用 crucially important 替代 very important，展示副詞修飾形容詞的高階語法控制力。"
+    },
+    {
+        id: 17,
+        type: "MC",
+        category: "Focusing attention",
+        source_page: 20,
+        difficulty: "hard",
+        question_en: "This prestigious university club is designed ______ for postgraduate students; undergraduates are not permitted to join.",
+        options: [
+            {
+                label: "A", text: "specifically",
+                kk: "[spɪˋsɪfɪk!ɪ]", ipa: "/spəˈsɪfɪkli/", part_of_speech: "adv.", meaning_zh: "特別地；明確地",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。specifically 雖然指「專為...」，但語氣較弱，沒有 D 選項那種強烈的「排他性（其他人不行）」。",
+                phrase_example: { en: "These jeans are designed specifically for women.", zh: "這款牛仔褲是專為女性設計的。" },
+                collocations: ["designed specifically for"]
+            },
+            {
+                label: "B", text: "primarily",
+                kk: "[praɪˋmɛrəlɪ]", ipa: "/praɪˈmerəli/", part_of_speech: "adv.", meaning_zh: "主要地",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。primarily 指「主要是」，暗示「大部分是，但偶爾也有例外」。但後文明確說大學生不被允許，因此沒有例外。",
+                phrase_example: { en: "The disease primarily affects older people.", zh: "這種疾病主要影響老年人。" },
+                collocations: ["primarily responsible", "primarily due to"]
+            },
+            {
+                label: "C", text: "notably",
+                kk: "[ˋnotəblɪ]", ipa: "/ˈnəʊtəbli/", part_of_speech: "adv.", meaning_zh: "特別是；顯著地",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。notably 用於舉例說明中最顯著的例子（相當於 especially），語法和語意都不符合空格。",
+                phrase_example: { en: "Many members were absent, most notably the chairman.", zh: "許多成員缺席了，特別是主席。" },
+                collocations: ["most notably"]
+            },
+            {
+                label: "D", text: "exclusively",
+                kk: "[ɪkˋsklusɪvlɪ]", ipa: "/ɪkˈskluːsɪvli/", part_of_speech: "adv.", meaning_zh: "專門地；獨佔地（僅限）",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。exclusively 強調「排他性」，即「只有這個群體可以，其他都不行」，完美對應後半句「大學生不准加入」。",
+                phrase_example: { en: "This room is exclusively for female guests.", zh: "此房間專供女性房客使用。" },
+                collocations: ["focus exclusively on", "exclusively for"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：閱讀的 True/False/Not Given 題型非常喜歡考 exclusively, only, merely 等「絕對性副詞」。若文章用 primarily，題目用 exclusively，答案通常是 False。"
+    },
+    {
+        id: 18,
+        type: "MC",
+        category: "Generalisations & specifics",
+        source_page: 21,
+        difficulty: "medium",
+        question_en: "Before writing the full essay, you should prepare a clear ______ to structure your main arguments logically.",
+        options: [
+            {
+                label: "A", text: "technicality",
+                kk: "[ˏtɛknɪˋkælətɪ]", ipa: "/ˌteknɪˈkæləti/", part_of_speech: "n.", meaning_zh: "技術細節",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。technicality 指細微的技術或法律細節，與寫作前的「架構規劃」無關。",
+                phrase_example: { en: "The case was dismissed on a legal technicality.", zh: "該案件因法律技術細節而被駁回。" },
+                collocations: ["on a technicality"]
+            },
+            {
+                label: "B", text: "peculiarity",
+                kk: "[pɪˏkjulɪˋærətɪ]", ipa: "/pɪˌkjuːliˈærəti/", part_of_speech: "n.", meaning_zh: "怪癖；特性",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。peculiarity 指某事物的奇特之處或特徵，寫作時不需要準備特性。",
+                phrase_example: { en: "We noticed the peculiarity of his behavior.", zh: "我們注意到了他行為的怪異之處。" },
+                collocations: ["peculiarity of"]
+            },
+            {
+                label: "C", text: "gist",
+                kk: "[dʒɪst]", ipa: "/dʒɪst/", part_of_speech: "n.", meaning_zh: "主旨；大意",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。gist 指文章或談話的「大意」，通常是聽完或讀完後掌握的重點 (get the gist)，而不是寫作前草擬的「大綱結構」。",
+                phrase_example: { en: "I didn't catch every word, but I got the gist of the conversation.", zh: "我沒有聽清楚每個字，但我掌握了對話的大意。" },
+                collocations: ["get the gist"]
+            },
+            {
+                label: "D", text: "outline",
+                kk: "[ˋaʊtˏlaɪn]", ipa: "/ˈaʊtlaɪn/", part_of_speech: "n.", meaning_zh: "大綱；概要",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。outline 指文章寫作前草擬的「大綱」，用來組織 (structure) 你的論點 (arguments)。",
+                phrase_example: { en: "She drew up an outline for the essay.", zh: "她草擬了這篇論文的大綱。" },
+                collocations: ["draw up an outline", "broad outline"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：強烈建議在開始寫 Task 2 前花 3 分鐘寫一個 brief outline，這能大幅提升文章的結構清晰度。"
+    },
+    {
+        id: 19,
+        type: "MC",
+        category: "Groups",
+        source_page: 23,
+        difficulty: "hard",
+        question_en: "During the hike, we had to run away when a huge ______ of angry wasps flew out of the bush.",
+        options: [
+            {
+                label: "A", text: "flock",
+                kk: "[flɑk]", ipa: "/flɒk/", part_of_speech: "n.", meaning_zh: "（羊、鳥等）群",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。英文的集合名詞非常固定，flock 專門用來形容鳥群 (a flock of birds) 或羊群 (a flock of sheep)。",
+                phrase_example: { en: "A flock of birds flew across the sky.", zh: "一群鳥飛過天空。" },
+                collocations: ["a flock of birds", "a flock of sheep"]
+            },
+            {
+                label: "B", text: "herd",
+                kk: "[hɝd]", ipa: "/hɜːd/", part_of_speech: "n.", meaning_zh: "（牛、象等有蹄類動物）群",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。herd 專門用來形容大型草食性哺乳動物，如牛 (cows)、大象 (elephants)、鹿 (deer)。",
+                phrase_example: { en: "We saw a large herd of elephants in the national park.", zh: "我們在國家公園看到了一大群大象。" },
+                collocations: ["a herd of cows", "a herd of elephants"]
+            },
+            {
+                label: "C", text: "pack",
+                kk: "[pæk]", ipa: "/pæk/", part_of_speech: "n.", meaning_zh: "（狼、狗等犬科動物）群",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。pack 專指獵犬或狼群，如 a pack of wolves / dogs。",
+                phrase_example: { en: "A pack of wild dogs roamed the streets at night.", zh: "一群野狗在夜間在街上遊蕩。" },
+                collocations: ["a pack of wolves", "a pack of lies"]
+            },
+            {
+                label: "D", text: "swarm",
+                kk: "[swɔrm]", ipa: "/swɔːm/", part_of_speech: "n.", meaning_zh: "（昆蟲）群",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。swarm 專門用來形容大量聚集或飛行的昆蟲，如蜜蜂 (bees)、黃蜂 (wasps)、蝗蟲 (locusts)。",
+                phrase_example: { en: "A swarm of bees flew into the garden.", zh: "一大群蜜蜂飛進了花園。" },
+                collocations: ["a swarm of bees", "a swarm of locusts"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：IELTS 極度看重詞彙搭配 (Collocation) 的精準度。記住：鳥/羊用 flock，牛/象用 herd，狼/狗用 pack，昆蟲用 swarm。"
+    },
+    {
+        id: 20,
+        type: "MATCH",
+        category: "Groups",
+        source_page: 23,
+        difficulty: "medium",
+        question_en: "Select the word that best describes 'a quantity of food, medicine, or products produced or dealt with at one time'.",
+        options: [
+            {
+                label: "A", text: "bunch",
+                kk: "[bʌntʃ]", ipa: "/bʌntʃ/", part_of_speech: "n.", meaning_zh: "串；束",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。bunch 指綁在一起的同類物品，如一串香蕉 (a bunch of bananas)、一束花 (a bunch of flowers)。",
+                phrase_example: { en: "He bought her a beautiful bunch of flowers.", zh: "他買了一束美麗的花給她。" },
+                collocations: ["a bunch of keys", "a bunch of flowers"]
+            },
+            {
+                label: "B", text: "bundle",
+                kk: "[ˋbʌnd!]", ipa: "/ˈbʌndl/", part_of_speech: "n.", meaning_zh: "捆；包裹",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。bundle 指用布包起來或用繩子綑綁在一起的物品，如一捆木柴 (a bundle of firewood)。",
+                phrase_example: { en: "She carried a bundle of clothes to the laundry.", zh: "她拿著一捆衣服去洗衣店。" },
+                collocations: ["a bundle of joy", "a bundle of sticks"]
+            },
+            {
+                label: "C", text: "stack",
+                kk: "[stæk]", ipa: "/stæk/", part_of_speech: "n.", meaning_zh: "（整齊的）堆",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。stack 指將扁平物品整齊地疊放起來，如一疊紙 (a stack of paper)、一疊盤子 (a stack of plates)。",
+                phrase_example: { en: "There was a stack of books on his desk.", zh: "他的桌上有一疊書。" },
+                collocations: ["a stack of papers", "a stack of plates"]
+            },
+            {
+                label: "D", text: "batch",
+                kk: "[bætʃ]", ipa: "/bætʃ/", part_of_speech: "n.", meaning_zh: "一批（生產量）",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。batch 專指工廠、烤箱等「一次生產或處理出來的一批物品」，最常用於烘焙、產品製造。",
+                phrase_example: { en: "The company had to recall a whole batch of faulty smartphones.", zh: "該公司不得不召回整批有瑕疵的智慧型手機。" },
+                collocations: ["a batch of cookies", "process in batches"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：Listening Section 3 若討論實驗流程，或 Task 1 描寫製造流程圖 (Process Diagram) 時，batch 是非常專業的計量名詞。"
+    },
+    {
+        id: 21,
+        type: "MC",
+        category: "How something works",
+        source_page: 24,
+        difficulty: "easy",
+        question_en: "It is a basic law of physics that most metals tend to ______ when they are heated and shrink when they cool down.",
+        options: [
+            {
+                label: "A", text: "compress",
+                kk: "[kəmˋprɛs]", ipa: "/kəmˈpres/", part_of_speech: "v.", meaning_zh: "壓縮",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。compress 指施加外力使體積縮小，與加熱導致膨脹的物理現象相反。",
+                phrase_example: { en: "The machine compresses old cars into solid blocks of metal.", zh: "這台機器將舊車壓縮成實心金屬塊。" },
+                collocations: ["compress data", "compress air"]
+            },
+            {
+                label: "B", text: "contract",
+                kk: "[kənˋtrækt]", ipa: "/kənˈtrækt/", part_of_speech: "v.", meaning_zh: "收縮",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。contract 作為動詞時，意指「收縮、縮小」，其實這正是 shrink 的同義字，也就是冷卻時會發生的事，不符題意。",
+                phrase_example: { en: "Metal contracts as it cools.", zh: "金屬冷卻時會收縮。" },
+                collocations: ["muscles contract", "economy contracts"]
+            },
+            {
+                label: "C", text: "convert",
+                kk: "[kənˋvɝt]", ipa: "/kənˈvɜːt/", part_of_speech: "v.", meaning_zh: "轉換",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。convert 意指改變事物的形式或用途（如將太陽能轉換為電能），並非指體積變大。",
+                phrase_example: { en: "Solar panels convert sunlight into electricity.", zh: "太陽能板將陽光轉化為電能。" },
+                collocations: ["convert into", "convert a building"]
+            },
+            {
+                label: "D", text: "expand",
+                kk: "[ɪkˋspænd]", ipa: "/ɪkˈspænd/", part_of_speech: "v.", meaning_zh: "膨脹；擴大",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。expand 意為體積或規模變大，熱脹冷縮的「熱脹」在英文中就是 expand。",
+                phrase_example: { en: "Water expands as it freezes.", zh: "水結冰時會膨脹。" },
+                collocations: ["expand rapidly", "business expands"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：Reading 中經常出現科普文章 (如冰川融化、氣候變遷)，expand (膨脹) 與 contract (收縮) 是一對必背的反義動詞。"
+    },
+    {
+        id: 22,
+        type: "MC",
+        category: "Joining or becoming part...",
+        source_page: 25,
+        difficulty: "hard",
+        question_en: "In a strategic move to survive the economic downturn, the two competing airlines decided to ______ and form a single massive corporation.",
+        options: [
+            {
+                label: "A", text: "incorporate",
+                kk: "[ɪnˋkɔrpəˏret]", ipa: "/ɪnˈkɔːpəreɪt/", part_of_speech: "v.", meaning_zh: "包含；使併入",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。incorporate 通常指「將某元素納入整體中」(incorporate A into B)，較少用於兩家平等公司的「合併」。",
+                phrase_example: { en: "We will incorporate your suggestions into the new design.", zh: "我們將把你的建議納入新設計中。" },
+                collocations: ["incorporate into"]
+            },
+            {
+                label: "B", text: "assimilate",
+                kk: "[əˋsɪm!ˏet]", ipa: "/əˈsɪməleɪt/", part_of_speech: "v.", meaning_zh: "同化；吸收",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。assimilate 多用於指少數民族融入並被大社會「同化」，或指「吸收」新知識。",
+                phrase_example: { en: "It takes time to assimilate all these new facts.", zh: "要吸收所有這些新事實需要時間。" },
+                collocations: ["assimilate into society", "assimilate information"]
+            },
+            {
+                label: "C", text: "swallow up",
+                kk: "[ˋswɑlo ʌp]", ipa: "/ˈswɒləʊ ʌp/", part_of_speech: "phr.v.", meaning_zh: "吞併；吞噬",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。swallow up 帶有貶義，指大公司惡意收購或強行吞併小公司。題意是兩家公司「共同決定(decided to)」組成新公司，應屬平等合併。",
+                phrase_example: { en: "Many small businesses have been swallowed up by large supermarkets.", zh: "許多小企業已經被大型超市吞併了。" },
+                collocations: ["be swallowed up by"]
+            },
+            {
+                label: "D", text: "amalgamate",
+                kk: "[əˋmælgəˏmet]", ipa: "/əˈmælɡəmeɪt/", part_of_speech: "v.", meaning_zh: "合併；聯合",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。amalgamate 是高級商業用語，指兩個或多個組織、企業「合併」成一個新的實體，等同於 merge。",
+                phrase_example: { en: "The two companies amalgamated to form a new multinational corporation.", zh: "這兩家公司合併成立了一家新的跨國企業。" },
+                collocations: ["amalgamate with", "amalgamate into"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：閱讀的商業類文章 (Business & Economy) 常考企業合併。amalgamate 是 7.5 分以上的超強單字。"
+    },
+    {
+        id: 23,
+        type: "MC",
+        category: "Likes & dislikes",
+        source_page: 26,
+        difficulty: "medium",
+        question_en: "From the moment she started singing, the young artist managed to completely ______ the audience with her beautiful voice.",
+        options: [
+            {
+                label: "A", text: "repel",
+                kk: "[rɪˋpɛl]", ipa: "/rɪˈpel/", part_of_speech: "v.", meaning_zh: "使反感；驅逐",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。repel 是負面詞，意思是讓人感到噁心或想逃離。美麗的嗓音不會讓人反感。",
+                phrase_example: { en: "The smell of the decaying fish repelled me.", zh: "腐魚的味道讓我作嘔。" },
+                collocations: ["repel mosquitoes", "repel an attack"]
+            },
+            {
+                label: "B", text: "detest",
+                kk: "[dɪˋtɛst]", ipa: "/dɪˈtest/", part_of_speech: "v.", meaning_zh: "極度厭惡",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。detest 是強烈的負面詞 (hate)，通常指自己討厭某事，不會說用美妙聲音去「厭惡」觀眾。",
+                phrase_example: { en: "I detest people who tell lies.", zh: "我極度討厭說謊的人。" },
+                collocations: ["detest doing something"]
+            },
+            {
+                label: "C", text: "dread",
+                kk: "[drɛd]", ipa: "/dred/", part_of_speech: "v.", meaning_zh: "害怕；畏懼",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。dread 指對即將發生的事感到極度害怕，與句子語境完全不符。",
+                phrase_example: { en: "I'm dreading the exam tomorrow.", zh: "我非常害怕明天的考試。" },
+                collocations: ["dread the thought of"]
+            },
+            {
+                label: "D", text: "captivate",
+                kk: "[ˋkæptəˏvet]", ipa: "/ˈkæptɪveɪt/", part_of_speech: "v.", meaning_zh: "迷住；使著迷",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。captivate 是正面的高階字彙，意思是像施了魔法般「深深吸引住、迷住」某人。",
+                phrase_example: { en: "The children were captivated by his stories.", zh: "孩子們被他的故事深深迷住了。" },
+                collocations: ["be captivated by", "captivate the audience"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：Speaking Part 2 要描述一部電影、一本書或一場表演時，用 'It captivated me.' 來取代 'I liked it very much.' 會讓考官眼睛一亮！"
+    },
+    {
+        id: 24,
+        type: "MC",
+        category: "Location & direction",
+        source_page: 27,
+        difficulty: "hard",
+        question_en: "If you look at the map, the new public library is not right next to the school; instead, it is ______ across the large intersection.",
+        options: [
+            {
+                label: "A", text: "directly opposite",
+                kk: "[dɪˋrɛktlɪ ˋɑpəzɪt]", ipa: "/dəˈrektli ˈɒpəzɪt/", part_of_speech: "phr.", meaning_zh: "正對面",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。directly opposite 是指過馬路的「正前方」。但這題的敘述強調了路口 (intersection)，通常十字路口對面的建築會用另一個特定的詞來形容位置的偏斜。",
+                phrase_example: { en: "The bus stop is directly opposite the main entrance.", zh: "公車站就在正門的正對面。" },
+                collocations: ["directly opposite the station"]
+            },
+            {
+                label: "B", text: "halfway along",
+                kk: "[ˋhæfˋwe əˋlɔŋ]", ipa: "/ˌhɑːfˈweɪ əˈlɒŋ/", part_of_speech: "phr.", meaning_zh: "在...的半路上",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。halfway along 用來描述某物位於一條路或走廊的中間段，不符合「跨越十字路口」的語境。",
+                phrase_example: { en: "The post office is halfway along High Street.", zh: "郵局在 High Street 的中間點。" },
+                collocations: ["halfway along the road"]
+            },
+            {
+                label: "C", text: "parallel to",
+                kk: "[ˋpærəˏlɛl tu]", ipa: "/ˈpærəlel tuː/", part_of_speech: "phr.", meaning_zh: "與...平行",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。parallel to 用於描述兩條路或線沒有交集、走向一致。不能用來形容建築物跨越路口的位置。",
+                phrase_example: { en: "The new cycle path runs parallel to the main road.", zh: "新建的自行車道與主幹道平行。" },
+                collocations: ["run parallel to"]
+            },
+            {
+                label: "D", text: "diagonally opposite",
+                kk: "[daɪˋægən!ɪ ˋɑpəzɪt]", ipa: "/daɪˈæɡənəli ˈɒpəzɪt/", part_of_speech: "phr.", meaning_zh: "斜對角；斜對面",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。diagonally 指「對角線地」。在十字路口 (intersection) 的對角位置，英文的標準說法就是 diagonally opposite。",
+                phrase_example: { en: "The supermarket is diagonally opposite the police station.", zh: "超市在警察局的斜對面。" },
+                collocations: ["diagonally opposite"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：Listening Section 2 地圖題 (Map Labelling) 的魔王級單字！當錄音唸出 'diagonally opposite' 時，請毫不猶豫在十字路口的斜對角找答案。"
+    },
+    {
+        id: 25,
+        type: "MC",
+        category: "Modified words",
+        source_page: 30,
+        difficulty: "medium",
+        question_en: "Despite scoring in the top 1% on IQ tests, Thomas was deemed an ______ in high school because he constantly failed to submit his homework and failed exams.",
+        options: [
+            {
+                label: "A", text: "overachiever",
+                kk: "[ˏovɚəˋtʃivɚ]", ipa: "/ˌəʊvərəˈtʃiːvə/", part_of_speech: "n.", meaning_zh: "成就超出預期者；過分努力的人",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。over- 代表過度。overachiever 是指成就超過預期或過於拚命的人，與他不交作業且考試不及格的敘述相反。",
+                phrase_example: { en: "She's a classic overachiever who needs to be the best at everything.", zh: "她是個典型的成就超越預期者，凡事都要做到最好。" },
+                collocations: ["classic overachiever"]
+            },
+            {
+                label: "B", text: "postgraduate",
+                kk: "[postˋgrædʒʊɪt]", ipa: "/ˌpəʊstˈɡrædʒuət/", part_of_speech: "n.", meaning_zh: "研究生",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。post- 代表後。postgraduate 指大學畢業後繼續深造的學生，與高中時期不交作業的語境無關。",
+                phrase_example: { en: "He is a postgraduate student studying advanced physics.", zh: "他是個研讀高等物理的研究生。" },
+                collocations: ["postgraduate course", "postgraduate degree"]
+            },
+            {
+                label: "C", text: "co-worker",
+                kk: "[ˋkoˋwɝkɚ]", ipa: "/ˈkəʊˌwɜːkə/", part_of_speech: "n.", meaning_zh: "同事",
+                is_correct: false,
+                fit_explanation_zh: "❌ 不適合。co- 代表共同。co-worker 是職場同事，不適用於高中的學生身分。",
+                phrase_example: { en: "He gets along well with all his co-workers.", zh: "他和所有的同事都相處得很好。" },
+                collocations: ["former co-worker"]
+            },
+            {
+                label: "D", text: "underachiever",
+                kk: "[ˏʌndɚəˋtʃivɚ]", ipa: "/ˌʌndərəˈtʃiːvə/", part_of_speech: "n.", meaning_zh: "表現不如預期的人；學習落後者",
+                is_correct: true,
+                fit_explanation_zh: "✅ 正確答案。under- 代表低於/不足。underachiever 專指那些「明明有能力（如高IQ），但成績卻很差」的學生。",
+                phrase_example: { en: "The program aims to help boys who are underachievers at school.", zh: "該計畫旨在幫助在學校表現不佳的男孩。" },
+                collocations: ["chronic underachiever", "underachiever at school"]
+            }
+        ],
+        ielts_tip_zh: "💡 IELTS 應用：在討論教育問題、天賦與努力 (Nature vs Nurture) 的論述中，善用加上 under- 或 over- 字首的名詞，能展現豐富的字彙變化能力。"
+    }
+];
+
+        // ================= 應用程式狀態管理 =================
+        let settings = {
+            accent: 'en-US',
+            rate: 0.9,
+            dark: false
+        };
+
+        let state = {
+            mode: 'ALL',
+            currentIndex: 0,
+            answers: {}, // { qId: { isCorrect: boolean, selectedLabel: 'A' } }
+            mistakes: new Set(),
+            selectedOptionLabel: null,
+            submitted: false
+        };
+
+        let activeQuestions = questionsData;
+
+        // ================= 初始化 =================
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                settings.dark = true;
+                document.documentElement.classList.add('dark');
+            }
+            renderSidebar();
+            renderQuestion();
+        });
+
+        // ================= Web Speech API =================
+        function speak(text) {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = settings.accent;
+            utterance.rate = settings.rate;
+            
+            const voices = window.speechSynthesis.getVoices();
+            const preferred = voices.find(v => v.lang === settings.accent && 
+                (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Aria') || v.name.includes('Samantha'))
+            );
+            if (preferred) utterance.voice = preferred;
+            
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 確保語音載入
+        window.speechSynthesis.onvoiceschanged = () => {};
+
+        function speakCurrentQuestion() {
+            const q = activeQuestions[state.currentIndex];
+            let textToSpeak = q.question_en.replace(/_+/g, " blank ");
+            speak(textToSpeak);
+        }
+
+        // ================= UI 更新與邏輯 =================
+        function updateSettings() {
+            settings.accent = document.getElementById('setting-accent').value;
+            settings.rate = parseFloat(document.getElementById('setting-speed').value);
+        }
+
+        function toggleDarkMode() {
+            settings.dark = !settings.dark;
+            if (settings.dark) document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('sidebar-menu').classList.toggle('hidden');
+        }
+
+        function switchMode(mode) {
+            state.mode = mode;
+            if (mode === 'MISTAKES') {
+                activeQuestions = questionsData.filter(q => state.mistakes.has(q.id));
+                if (activeQuestions.length === 0) {
+                    alert('目前沒有錯題！繼續保持！');
+                    switchMode('ALL');
+                    return;
+                }
+            } else {
+                activeQuestions = questionsData;
+            }
+            state.currentIndex = 0;
+            renderSidebar();
+            renderQuestion();
+        }
+
+        function renderSidebar() {
+            const btnAll = document.getElementById('btn-mode-all');
+            const btnMistakes = document.getElementById('btn-mode-mistakes');
+            
+            if (state.mode === 'ALL') {
+                btnAll.className = "w-full text-left font-bold p-3 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 transition-colors";
+                btnMistakes.className = "w-full text-left font-bold p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors";
+            } else {
+                btnAll.className = "w-full text-left font-bold p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors";
+                btnMistakes.className = "w-full text-left font-bold p-3 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 transition-colors";
+            }
+
+            document.getElementById('mistake-count').innerText = state.mistakes.size;
+
+            let answeredCount = 0;
+            let correctCount = 0;
+            activeQuestions.forEach(q => {
+                if (state.answers[q.id]) {
+                    answeredCount++;
+                    if (state.answers[q.id].isCorrect) correctCount++;
+                }
+            });
+
+            const total = activeQuestions.length;
+            const accuracy = answeredCount === 0 ? 0 : Math.round((correctCount / answeredCount) * 100);
+            const progressPercent = total === 0 ? 0 : (answeredCount / total) * 100;
+
+            document.getElementById('progress-bar-fill').style.width = `${progressPercent}%`;
+            document.getElementById('progress-text').innerText = `${answeredCount}/${total}`;
+            document.getElementById('accuracy-text').innerText = `${accuracy}%`;
+        }
+
+        function renderQuestion() {
+            if (activeQuestions.length === 0) return;
+
+            const q = activeQuestions[state.currentIndex];
+            state.selectedOptionLabel = null;
+            state.submitted = !!state.answers[q.id];
+
+            document.getElementById('header-title').innerText = `Question ${q.id}`;
+            document.getElementById('badge-type').innerText = q.type;
+            document.getElementById('badge-category').innerText = q.category;
+
+            // 純英文題目
+            document.getElementById('q-en').innerHTML = formatQuestionEn(q.question_en);
+
+            // 渲染選項
+            const optsContainer = document.getElementById('options-container');
+            optsContainer.innerHTML = '';
+
+            q.options.forEach(opt => {
+                const btn = document.createElement('div');
+                
+                // 狀態樣式邏輯
+                let stateClasses = "bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer";
+                
+                if (state.submitted) {
+                    const ans = state.answers[q.id];
+                    const isThisSelected = ans.selectedLabel === opt.label;
+                    
+                    if (opt.is_correct) {
+                        // 正確答案永遠亮綠色
+                        stateClasses = "bg-green-50 border-green-500 dark:bg-green-900/30 dark:border-green-500 cursor-default shadow-sm ring-1 ring-green-500";
+                    } else if (isThisSelected && !opt.is_correct) {
+                        // 選錯的亮紅色
+                        stateClasses = "bg-red-50 border-red-500 dark:bg-red-900/30 dark:border-red-500 cursor-default opacity-70";
+                    } else {
+                        // 沒選到的錯誤答案
+                        stateClasses = "bg-gray-50 border-gray-200 dark:bg-gray-800/50 dark:border-gray-700 cursor-default opacity-50";
+                    }
+                } else {
+                    btn.onclick = () => selectOption(opt.label);
+                }
+
+                btn.className = `w-full text-left p-4 rounded-xl border-2 transition-all flex items-center justify-between group ${stateClasses}`;
+                btn.id = `opt-${opt.label}`;
+
+                btn.innerHTML = `
+                    <div class="flex items-center gap-4 flex-1">
+                        <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold font-serif-en group-hover:bg-blue-100 group-hover:text-blue-700 dark:group-hover:bg-blue-800 dark:group-hover:text-blue-200 transition-colors">${opt.label}</span>
+                        <span class="text-xl font-serif-en text-gray-900 dark:text-gray-100">${opt.text}</span>
+                    </div>
+                    <span onclick="event.stopPropagation(); speak('${opt.text.replace(/'/g, "\\'")}')" class="speaker-btn text-2xl opacity-50 hover:opacity-100 ml-2" title="Listen">🔊</span>
+                `;
+                optsContainer.appendChild(btn);
+            });
+
+            // 狀態控制
+            const submitBtn = document.getElementById('btn-submit');
+            const expCard = document.getElementById('explanation-card');
+            
+            if (state.submitted) {
+                submitBtn.classList.add('hidden');
+                expCard.classList.remove('hidden');
+                renderExplanation(q);
+            } else {
+                submitBtn.classList.remove('hidden');
+                expCard.classList.add('hidden');
+            }
+
+            document.getElementById('quiz-scroll-area').scrollTop = 0;
+            updateMistakeStar(q.id);
+        }
+
+        function formatQuestionEn(text) {
+            return text.replace(/_+/g, '<span class="text-blue-600 dark:text-blue-400 font-bold border-b-[3px] border-blue-600 dark:border-blue-400 px-4 inline-block min-w-[3rem]"></span>');
+        }
+
+        function selectOption(label) {
+            if (state.submitted) return;
+            state.selectedOptionLabel = label;
+            
+            const container = document.getElementById('options-container');
+            Array.from(container.children).forEach(child => {
+                child.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30', 'dark:border-blue-500', 'ring-1', 'ring-blue-500');
+                child.classList.add('border-gray-200', 'dark:border-gray-700', 'bg-white', 'dark:bg-gray-800');
+            });
+            
+            const selectedBtn = document.getElementById(`opt-${label}`);
+            selectedBtn.classList.remove('border-gray-200', 'dark:border-gray-700', 'bg-white', 'dark:bg-gray-800');
+            selectedBtn.classList.add('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/30', 'dark:border-blue-500', 'ring-1', 'ring-blue-500');
+        }
+
+        function submitAnswer() {
+            if (!state.selectedOptionLabel) {
+                alert('Please select an answer first!');
+                return;
+            }
+
+            const q = activeQuestions[state.currentIndex];
+            const selectedOpt = q.options.find(o => o.label === state.selectedOptionLabel);
+            const isCorrect = selectedOpt.is_correct;
+            
+            state.answers[q.id] = {
+                isCorrect: isCorrect,
+                selectedLabel: state.selectedOptionLabel
+            };
+
+            if (!isCorrect) {
+                state.mistakes.add(q.id);
+            }
+
+            state.submitted = true;
+            renderSidebar();
+            renderQuestion(); 
+        }
+
+        function renderExplanation(q) {
+            const ans = state.answers[q.id];
+            const resultText = document.getElementById('result-text');
+            const resultBanner = document.getElementById('result-banner');
+            const correctOpt = q.options.find(o => o.is_correct);
+
+            if (ans.isCorrect) {
+                resultBanner.className = "p-6 flex justify-between items-center border-b border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-900/50";
+                resultText.innerHTML = `<span class="text-green-600 dark:text-green-400 flex items-center gap-2"><span class="text-2xl">✅</span> Correct! ${correctOpt.label}. ${correctOpt.text}</span>`;
+            } else {
+                resultBanner.className = "p-6 flex justify-between items-center border-b border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-900/50";
+                resultText.innerHTML = `<span class="text-red-600 dark:text-red-400 flex items-center gap-2"><span class="text-2xl">❌</span> Incorrect. The answer is ${correctOpt.label}. ${correctOpt.text}</span>`;
+            }
+
+            const analysisContainer = document.getElementById('options-analysis-container');
+            analysisContainer.innerHTML = '';
+
+            // 渲染全選項詳解
+            q.options.forEach(opt => {
+                const isThisSelected = ans.selectedLabel === opt.label;
+                const statusIcon = opt.is_correct ? '🟢' : (isThisSelected ? '🔴' : '⚫');
+                const borderColor = opt.is_correct ? 'border-green-300 dark:border-green-700' : (isThisSelected ? 'border-red-300 dark:border-red-700' : 'border-gray-200 dark:border-gray-700');
+                const bgColor = opt.is_correct ? 'bg-green-50/50 dark:bg-green-900/10' : (isThisSelected ? 'bg-red-50/50 dark:bg-red-900/10' : 'bg-gray-50 dark:bg-gray-800/50');
+                
+                let collHtml = opt.collocations ? `<div class="mt-2 text-sm text-gray-600 dark:text-gray-400"><span class="font-bold">🔗 搭配：</span>${opt.collocations.join(' / ')}</div>` : '';
+
+                analysisContainer.innerHTML += `
+                    <div class="p-4 rounded-xl border ${borderColor} ${bgColor} transition-colors">
+                        <div class="flex flex-wrap items-baseline gap-2 mb-2">
+                            <span class="text-lg font-bold text-gray-900 dark:text-white">${statusIcon} ${opt.label}. ${opt.text}</span>
+                            <span class="text-gray-500 font-mono-kk text-sm">${opt.kk}</span>
+                            <span class="text-gray-400 text-xs">(${opt.ipa})</span>
+                            <span onclick="speak('${opt.text.replace(/'/g, "\\'")}')" class="speaker-btn ml-auto text-xl">🔊</span>
+                        </div>
+                        <div class="mb-3">
+                            <span class="inline-block px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded mr-2">${opt.part_of_speech}</span>
+                            <span class="text-gray-800 dark:text-gray-200 font-medium">${opt.meaning_zh}</span>
+                        </div>
+                        <div class="text-sm text-gray-700 dark:text-gray-300 mb-3 bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
+                            ${opt.fit_explanation_zh}
+                        </div>
+                        ${opt.phrase_example ? `
+                        <div class="pl-3 border-l-2 border-blue-300 dark:border-blue-600 mt-2">
+                            <p class="font-serif-en text-gray-800 dark:text-gray-200 flex gap-2">
+                                ${opt.phrase_example.en}
+                                <span onclick="speak('${opt.phrase_example.en.replace(/'/g, "\\'")}')" class="speaker-btn text-lg">🔊</span>
+                            </p>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">${opt.phrase_example.zh}</p>
+                        </div>
+                        ` : ''}
+                        ${collHtml}
+                    </div>
+                `;
+            });
+
+            // 渲染額外學習區
+            const extraSection = document.getElementById('extra-learning-section');
+            extraSection.innerHTML = '';
+            let hasExtra = false;
+
+            if (q.ielts_tip_zh) {
+                extraSection.innerHTML += `<p class="text-sm text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg">${q.ielts_tip_zh}</p>`;
+                hasExtra = true;
+            }
+
+            if (q.related_phrasal_verbs || q.related_words) {
+                const words = q.related_phrasal_verbs || q.related_words;
+                const liHtml = words.map(w => `<li class="text-sm text-gray-700 dark:text-gray-300"><span class="font-serif-en font-bold">${w.phrase || w.word}</span> — ${w.meaning_zh}</li>`).join('');
+                extraSection.innerHTML += `
+                    <div class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">
+                        <span class="font-bold text-gray-700 dark:text-gray-300 text-sm">🔁 相關片語/字彙：</span>
+                        <ul class="list-disc list-inside ml-4 mt-1">${liHtml}</ul>
+                    </div>
+                `;
+                hasExtra = true;
+            }
+
+            if(hasExtra) extraSection.classList.remove('hidden');
+            else extraSection.classList.add('hidden');
+        }
+
+        function toggleMistakeStar() {
+            const q = activeQuestions[state.currentIndex];
+            if (state.mistakes.has(q.id)) {
+                state.mistakes.delete(q.id);
+            } else {
+                state.mistakes.add(q.id);
+            }
+            updateMistakeStar(q.id);
+            renderSidebar();
+        }
+
+        function updateMistakeStar(id) {
+            const btn = document.getElementById('btn-star');
+            if(!btn) return;
+            if (state.mistakes.has(id)) {
+                btn.innerHTML = '⭐';
+                btn.classList.add('text-yellow-500');
+            } else {
+                btn.innerHTML = '☆';
+                btn.classList.remove('text-yellow-500');
+            }
+        }
+
+        // ================= 導覽 =================
+        function nextQuestion() {
+            if (state.currentIndex < activeQuestions.length - 1) {
+                state.currentIndex++;
+                renderQuestion();
+            }
+        }
+
+        function prevQuestion() {
+            if (state.currentIndex > 0) {
+                state.currentIndex--;
+                renderQuestion();
+            }
+        }
+
+    </script>
+</body>
+</html>
